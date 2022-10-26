@@ -1,0 +1,83 @@
+version: "3.9"
+services:
+  db:
+    image: mysql
+    command: ["mysqld", "--default-authentication-plugin=mysql_native_password"]
+    environment:
+      MYSQL_ROOT_PASSWORD: napakaangas
+      MYSQL_DATABASE: simplechatappdb
+    restart: unless-stopped
+    volumes:
+      - ./cache/mysql:/var/lib/mysql
+      - ./conf-mysql.cnf:/etc/mysql/conf.d/mysql.cnf
+    networks:
+      - node1dbconn
+      - node2dbconn
+      - xamppconn
+    ports:
+      - 3307:3306
+  phpmyadmin:
+    image: phpmyadmin
+    networks:
+      - xamppconn
+    ports:
+      - 8080:80
+    environment:
+      - PMA_ARBITRARY=1
+      - PMA_HOST=db
+      - PMA_PORT=3306
+  nginx:
+    restart: unless-stopped
+    build:
+      context: ./nginxbalancer
+    container_name: nginx
+    tty: true
+    ports:
+      - "5003:3003"
+    networks:
+      - node1conn
+      - node2conn
+    depends_on:
+      - node1
+      - node2
+  node1:
+    build:
+      context: ./simplelogin
+    volumes:
+      - "./uploads:/app/uploads"
+    restart: unless-stopped
+    container_name: node1con
+    ports:
+      - "5000:3000"
+    tty: true
+    networks:
+      - node1conn
+      - node1dbconn
+    depends_on:
+      - db
+  node2:
+    build:
+      context: ./simplelogin2
+    volumes:
+      - "./uploads:/app/uploads"
+    restart: unless-stopped
+    container_name: node2con
+    ports:
+      - "5001:3001"
+    tty: true
+    networks:
+      - node2conn
+      - node2dbconn
+    depends_on:
+      - db
+networks:
+  node1conn:
+    driver: bridge
+  node2conn:
+    driver: bridge
+  node1dbconn:
+    driver: bridge
+  node2dbconn:
+    driver: bridge
+  xamppconn:
+    driver: bridge
